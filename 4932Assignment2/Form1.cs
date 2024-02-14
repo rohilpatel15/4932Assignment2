@@ -155,9 +155,10 @@ namespace _4932Assignment2
                     float Cr_val = Cr[x, y] - 128;
 
                     // Convert YCrCb to RGB
-                    float R = (1f * Y_val) + (0 * Cb_val) + (1.4f * Cr_val);
-                    float G = (1f * Y_val) + (-0.343f * Cb_val) + (-0.711f * Cr_val);
-                    float B = (1f * Y_val) + (1.765f * Cb_val) + (0 * Cr_val);
+                    float R = (1.0f * Y_val) + (0.0f * Cb_val) + (1.4f * Cr_val);
+                    float G = (1.0f * Y_val) + (-0.343f * Cb_val) + (-0.711f * Cr_val);
+                    float B = (1.0f * Y_val) + (1.765f * Cb_val) + (0.0f * Cr_val);
+
 
                     // Ensure RGB values are within the valid range
                     R = Math.Max(0, Math.Min(255, R));
@@ -165,8 +166,10 @@ namespace _4932Assignment2
                     B = Math.Max(0, Math.Min(255, B));
 
                     // Set RGB values in the bitmap
-                    Color color = Color.FromArgb((int)R, (int)G, (int)B);
-                    rgb.SetPixel(x, y, color);
+                    rgb.SetPixel(x, y, Color.FromArgb((int)R, (int)G, (int)B));
+                    Console.WriteLine(R);
+                    Console.WriteLine(G);
+                    Console.WriteLine(B);
                 }
             }
             SavePicture(rgb);
