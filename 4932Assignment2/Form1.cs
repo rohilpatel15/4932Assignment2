@@ -1,11 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
 using System.Windows.Forms;
 
 namespace _4932Assignment2
@@ -13,6 +8,7 @@ namespace _4932Assignment2
     public partial class Form1 : Form
     {
         private Bitmap loadedBMap;
+        private Bitmap resizedMap;
         public Form1()
         {
             InitializeComponent();
@@ -20,10 +16,10 @@ namespace _4932Assignment2
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            if (loadedBMap != null)
+            if (resizedMap != null)
             {
                 // Draw the image onto the form
-                e.Graphics.DrawImage(loadedBMap, Point.Empty);
+                e.Graphics.DrawImage(resizedMap, Point.Empty);
             }
         }
 
@@ -34,21 +30,24 @@ namespace _4932Assignment2
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
                 loadedBMap = new Bitmap(openFileDialog.FileName);
-                loadedBMap = new Bitmap(loadedBMap, loadedBMap.Width, loadedBMap.Height);
+                resizedMap = new Bitmap(loadedBMap, this.ClientSize.Width, this.ClientSize.Height);
                 Refresh();
             }
         }
 
-        private void ConvertToYCbCr(Bitmap bmp)
+        private byte[] ConvertToYCbCr(Bitmap bmp)
         {
-            float[,] Y = new float[bmp.Width, bmp.Height];
-            float[,] Cb = new float[bmp.Width, bmp.Height];
-            float[,] Cr = new float[bmp.Width, bmp.Height];
+            int width = bmp.Width;
+            int height = bmp.Height;
+            byte[] finalData= new byte[(int)(width* height * 1.5F + 4)];
+            float[,] Y = new float[width, height];
+            float[,] Cb = new float[width, height];
+            float[,] Cr = new float[width, height];
 
             // Loop through each pixel in the bitmap
-            for (int y = 0; y < bmp.Height; y++)
+            for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < bmp.Width; x++)
+                for (int x = 0; x < width; x++)
                 {
                     Color pixel = bmp.GetPixel(x, y);
 
@@ -60,26 +59,100 @@ namespace _4932Assignment2
                     // Convert to YCrCb
                     Y[x, y] = 0.299f * R + 0.587f * G + 0.114f * B;
                     Cb[x, y] = (-0.168736f * R) + (-0.331264f * G) + (-0.5f * B) + 128;
-                    Cb[x, y] = (0.5f * R) + (-0.418688f * G) + (-0.081312f * B) + 128;
                     Cr[x, y] = (0.5f * R) + (-0.418688f * G) + (-0.081312f * B) + 128;
                 }
             }
+            Cb = Subsample(Cb);
+            Cr = Subsample(Cr);
+            int i = 0;
+            finalData[i++] = (byte)(width >> 8);
+            finalData[i++] = (byte)(width & 0xFF);   
+            finalData[i++] = (byte)(height >> 8);    
+            finalData[i++] = (byte)(height & 0xFF);
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    finalData[i++] = (byte)(Y[x, y]);
+                }
+            }
+            for (int y = 0; y < height / 2; y++)
+            {
+                for (int x = 0; x < width / 2; x++)
+                {
+                    finalData[i++] = (byte)(Cb[x, y]);
+                }
+            }
+            for (int y = 0; y < height / 2; y++)
+            {
+                for (int x = 0; x < width / 2; x++)
+                {
+                    finalData[i++] = (byte)(Cr[x, y]);
+                }
+            }
+            return finalData;
+        }
+        private float[,] Subsample(float[,] data)
+        {
+            int height = data.GetLength(1) / 2;
+            int width = data.GetLength(0) / 2;
+            float[,] result = new float[height, width];
+
+            for (int y = 0; y < height; y++)
+            {
+                for(int x = 0; x < width; x++)
+                {
+                    result[x,y] = data[x * 2, y * 2];
+                }
+            }
+            return result;
         }
 
-        private void ConvertFromYCbCr(Bitmap bmp)
+        private void ConvertFromYCbCr(byte[] fileData)
         {
-            float[,] Y = new float[bmp.Width, bmp.Height];
-            float[,] Cb = new float[bmp.Width / 2, bmp.Height / 2];
-            float[,] Cr = new float[bmp.Width / 2, bmp.Height / 2];
+            int width = fileData[0] << 8 | fileData[1];  
+            int height = fileData[2] << 8 | fileData[3];  
+            float[,] Y = new float[width, height];
+            float[,] Cb = new float[width / 2, height / 2];
+            float[,] Cr = new float[width / 2, height / 2];
 
-            for (int y = 0; y < bmp.Height; y++)
+            int i = 4;
+            for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < bmp.Width; x++)
+                for (int x = 0; x < width; x++)
+                {
+                    Y[x, y] = fileData[i++];
+                }
+            }
+            for (int y = 0; y < height / 2; y++)
+            {
+                for (int x = 0; x < width / 2; x++)
+                {
+                    Cb[x, y] = fileData[i++];
+                }
+            }
+            for (int y = 0; y < height / 2; y++)
+            {
+                for (int x = 0; x < width / 2; x++)
+                {
+                    Cr[x, y] = fileData[i++];
+                }
+            }
+
+            Cb = Upsample(Cb);
+            Cr = Upsample(Cr);
+
+            Bitmap rgb = new Bitmap(width, height);
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
                 {
                     // Perform necessary operations to convert YCrCb to RGB
                     float Y_val = Y[x, y];
-                    float Cb_val = Cb[x / 2, y / 2];
-                    float Cr_val = Cr[x / 2, y / 2];
+                    float Cb_val = Cb[x , y] - 128;
+                    float Cr_val = Cr[x, y] - 128;
 
                     // Convert YCrCb to RGB
                     float R = (1f * Y_val) + (0 * Cb_val) + (1.4f * Cr_val);
@@ -92,13 +165,84 @@ namespace _4932Assignment2
                     B = Math.Max(0, Math.Min(255, B));
 
                     // Set RGB values in the bitmap
-                    bmp.SetPixel(x, y, Color.FromArgb((int)R, (int)G, (int)B));
+                    Color color = Color.FromArgb((int)R, (int)G, (int)B);
+                    rgb.SetPixel(x, y, color);
+                }
+            }
+            SavePicture(rgb);
+        }
+
+        private float[,] Upsample(float[,] data)
+        {
+            int width = data.GetLength(0) * 2;
+            int height = data.GetLength(1) * 2;
+            float[,] result = new float[width, height];
+
+            int cy = 0;
+            for (int y = 0; y < height / 2; y++)
+            {
+                int cx = 0;
+                for (int x = 0; x < width / 2; x++)
+                {
+                    result[cx, cy] = data[x, y];
+                    result[cx + 1, cy] = data[x, y];
+                    result[cx, cy + 1] = data[x, y];
+                    result[cx + 1, cy + 1] = data[x, y];
+                    cx += 2;
+                }
+                cy += 2;
+            }
+
+            return result;
+        }
+
+        private void WriteToFile(byte[] array)
+        {
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "YCrCb|*.custom|All files|*.*";
+
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    string savePath = saveFileDialog.FileName;
+                    File.WriteAllBytes(savePath, array);
+                }
+            }
+        }
+
+        private void SavePicture(Bitmap picture)
+        {
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "bmp|*.bmp|All files|*.*";
+
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    string savePath = saveFileDialog.FileName;
+                    picture.Save(savePath);
                 }
             }
         }
 
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
+        }
+
+        private void toYCbCrToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            byte[] fileData = ConvertToYCbCr(loadedBMap);
+            WriteToFile(fileData);
+        }
+
+        private void toRGBToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                byte[] finalData = File.ReadAllBytes(openFileDialog.FileName);
+                ConvertFromYCbCr(finalData);
+            }
         }
     }
 }
