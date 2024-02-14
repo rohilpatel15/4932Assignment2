@@ -35,6 +35,18 @@ namespace _4932Assignment2
             }
         }
 
+        private static readonly float[,] RGBtoYCrCb = {
+            { 0.299f, 0.587f, 0.114f },
+            { -0.168736f, -0.331264f, 0.5f },
+            { 0.5f, -0.418688f, -0.081312f }
+        };
+
+        private static readonly float[,] YCrCbtoRGB = {
+            { 1f, 0f, 1.4f },
+            { 1f, -0.343f, -0.711f },
+            { 1f, 1.765f, 0f }
+        };
+
         private byte[] ConvertToYCbCr(Bitmap bmp)
         {
             int width = bmp.Width;
@@ -57,9 +69,9 @@ namespace _4932Assignment2
                     float B = pixel.B;
 
                     // Convert to YCrCb
-                    Y[x, y] = 0.299f * R + 0.587f * G + 0.114f * B;
-                    Cb[x, y] = (-0.168736f * R) + (-0.331264f * G) + (-0.5f * B) + 128;
-                    Cr[x, y] = (0.5f * R) + (-0.418688f * G) + (-0.081312f * B) + 128;
+                    Y[x, y] = RGBtoYCrCb[0, 0] * R + RGBtoYCrCb[0, 1] * G + RGBtoYCrCb[0, 2] * B;
+                    Cb[x, y] = RGBtoYCrCb[1, 0] * R + RGBtoYCrCb[1, 1] * G + RGBtoYCrCb[1, 2] * B + 128;
+                    Cr[x, y] = RGBtoYCrCb[2, 0] * R + RGBtoYCrCb[2, 1] * G + RGBtoYCrCb[2, 2] * B + 128;
                 }
             }
             Cb = Subsample(Cb);
@@ -155,9 +167,9 @@ namespace _4932Assignment2
                     float Cr_val = Cr[x, y] - 128;
 
                     // Convert YCrCb to RGB
-                    float R = 1.0f * Y_val +0.0f * Cb_val + 1.4f * Cr_val;
-                    float G = 1.0f * Y_val + -0.343f * Cb_val + -0.711f * Cr_val;
-                    float B = 1.0f * Y_val + 1.765f * Cb_val + 0.0f * Cr_val;
+                    float R = YCrCbtoRGB[0, 0] * Y_val + YCrCbtoRGB[0, 1] * Cb_val + YCrCbtoRGB[0, 2] * Cr_val;
+                    float G = YCrCbtoRGB[1, 0] * Y_val + YCrCbtoRGB[1, 1] * Cb_val + YCrCbtoRGB[1, 2] * Cr_val;
+                    float B = YCrCbtoRGB[2, 0] * Y_val + YCrCbtoRGB[2, 1] * Cb_val + YCrCbtoRGB[2, 2] * Cr_val;
 
 
                     // Ensure RGB values are within the valid range
@@ -167,10 +179,6 @@ namespace _4932Assignment2
 
                     // Set RGB values in the bitmap
                     rgb.SetPixel(x, y, Color.FromArgb((int)R, (int)G, (int)B));
-
-                    Console.WriteLine(R);
-                    Console.WriteLine(G);
-                    Console.WriteLine(B);
                 }
             }
             SavePicture(rgb);
