@@ -114,8 +114,8 @@ namespace _4932Assignment2
             int width = fileData[0] << 8 | fileData[1];  
             int height = fileData[2] << 8 | fileData[3];  
             float[,] Y = new float[width, height];
-            float[,] Cb = new float[width / 2, height / 2];
-            float[,] Cr = new float[width / 2, height / 2];
+            float[,] Cb = new float[width, height];
+            float[,] Cr = new float[width, height];
 
             int i = 4;
             for (int y = 0; y < height; y++)
@@ -155,9 +155,9 @@ namespace _4932Assignment2
                     float Cr_val = Cr[x, y] - 128;
 
                     // Convert YCrCb to RGB
-                    float R = (1.0f * Y_val) + (0.0f * Cb_val) + (1.4f * Cr_val);
-                    float G = (1.0f * Y_val) + (-0.343f * Cb_val) + (-0.711f * Cr_val);
-                    float B = (1.0f * Y_val) + (1.765f * Cb_val) + (0.0f * Cr_val);
+                    float R = 1.0f * Y_val +0.0f * Cb_val + 1.4f * Cr_val;
+                    float G = 1.0f * Y_val + -0.343f * Cb_val + -0.711f * Cr_val;
+                    float B = 1.0f * Y_val + 1.765f * Cb_val + 0.0f * Cr_val;
 
 
                     // Ensure RGB values are within the valid range
@@ -167,6 +167,7 @@ namespace _4932Assignment2
 
                     // Set RGB values in the bitmap
                     rgb.SetPixel(x, y, Color.FromArgb((int)R, (int)G, (int)B));
+
                     Console.WriteLine(R);
                     Console.WriteLine(G);
                     Console.WriteLine(B);
